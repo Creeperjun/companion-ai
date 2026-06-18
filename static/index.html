@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>CompanionAI - AI 陪伴对话</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,"Segoe UI",sans-serif;background:#f0f2f5;height:100vh;display:flex;flex-direction:column}
+.header{background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;padding:16px 24px;display:flex;align-items:center;justify-content:space-between}
+.header h1{font-size:20px;font-weight:600}
+.header .status{display:flex;gap:16px;font-size:13px;opacity:.9}
+#chatContainer{flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:12px}
+.msg{max-width:75%;padding:12px 16px;border-radius:18px;line-height:1.5;font-size:14px}
+.msg.user{align-self:flex-end;background:#667eea;color:#fff;border-bottom-right-radius:4px}
+.msg.assistant{align-self:flex-start;background:#fff;color:#333;border-bottom-left-radius:4px;box-shadow:0 1px 2px rgba(0,0,0,.1)}
+.msg .time{font-size:11px;opacity:.6;margin-top:4px}
+.input-area{border-top:1px solid #ddd;background:#fff;padding:12px 20px;display:flex;gap:10px}
+.input-area input{flex:1;padding:12px 16px;border:1px solid #ddd;border-radius:24px;font-size:14px;outline:none}
+.input-area input:focus{border-color:#667eea}
+.input-area button{background:#667eea;color:#fff;border:none;border-radius:24px;padding:12px 24px;font-size:14px;cursor:pointer}
+.input-area button:disabled{background:#ccc;cursor:not-allowed}
+.connecting{color:#999;text-align:center;padding:10px}
+</style>
+</head>
+<body>
+<div class="header"><h1> 陈俊玮</h1><div class="status"><span>情绪: <span id="emotionDisplay">平静</span></span><span>记忆: <span id="memoryCount">0</span> 条</span></div></div>
+<div id="chatContainer"><div class="msg assistant">幸会。我是陈俊玮，闲暇时喜欢读读书、聊聊天。你来了，正好陪我说说话。<div class="time">刚刚</div></div></div>
+<div class="input-area"><input type="text" id="userInput" placeholder="输入消息..." autofocus><button id="sendBtn">发送</button></div>
+<div class="connecting" id="connectingMsg">正在连接...</div>
+<script>
+var ws,chat=document.getElementById("chatContainer"),typingDiv=null,connMsg=document.getElementById("connectingMsg");
+function connect(){var p=location.protocol==="https:"?"wss:":"ws:";ws=new WebSocket(p+"//"+location.host+"/ws/chat");
+ws.onopen=function(){connMsg.style.display="none"};
+ws.onmessage=function(e){var d=JSON.parse(e.data);
+if(d.type==="emotion"){document.getElementById("emotionDisplay").textContent=d.emotion}
+else if(d.type==="chunk"){if(!typingDiv){typingDiv=document.createElement("div");typingDiv.className="msg assistant";chat.appendChild(typingDiv)}typingDiv.textContent+=d.content;chat.scrollTop=chat.scrollHeight}
+else if(d.type==="done"){if(typingDiv){var t=document.createElement("div");t.className="time";t.textContent=new Date().toLocaleTimeString("zh-CN",{hour:"2-digit",minute:"2-digit"});typingDiv.appendChild(t);typingDiv=null}document.getElementById("memoryCount").textContent=d.memory_count;document.getElementById("emotionDisplay").textContent=d.emotion;document.getElementById("sendBtn").disabled=false}
+else if(d.type==="error"){typingDiv=null;document.getElementById("sendBtn").disabled=false;alert(d.content)}};
+ws.onclose=function(){connMsg.style.display="block";connMsg.textContent="连接已断开，正在重连...";setTimeout(connect,2000)};
+ws.onerror=function(){ws.close()}};connect();
+function sendMsg(){var inp=document.getElementById("userInput"),msg=inp.value.trim();if(!msg||!ws||ws.readyState!==1)return;inp.value="";document.getElementById("sendBtn").disabled=true;
+var ud=document.createElement("div");ud.className="msg user";ud.textContent=msg;var t=document.createElement("div");t.className="time";t.textContent=new Date().toLocaleTimeString("zh-CN",{hour:"2-digit",minute:"2-digit"});ud.appendChild(t);chat.appendChild(ud);chat.scrollTop=chat.scrollHeight;
+ws.send(JSON.stringify({message:msg}))}
+document.getElementById("sendBtn").onclick=sendMsg;
+document.getElementById("userInput").addEventListener("keydown",function(e){if(e.key==="Enter")sendMsg()});
+</script>
+</body>
+</html>
